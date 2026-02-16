@@ -59,4 +59,4 @@ See **[INSTALL.md](INSTALL.md)** for build instructions, deployment steps, and t
 
 ## License
 
-TBD
+[MIT](LICENSE)
