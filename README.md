@@ -14,6 +14,9 @@ See actual image previews in Finder instead of generic document icons — in ico
 ### Spotlight Search
 Find IFF files by metadata: image dimensions, color mode, author, title, and embedded annotations. All searchable through Spotlight.
 
+
+<img width="860" height="1070" alt="CleanShot 2026-02-16 at 16 36 17@2x" src="https://github.com/user-attachments/assets/83002d28-34dc-416e-97e2-d0ece3ab2cf2" />
+
 ## Supported Formats
 
 Handles `.iff`, `.ilbm`, and `.lbm` files with the following IFF/ILBM features:
