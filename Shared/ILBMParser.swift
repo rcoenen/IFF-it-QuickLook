@@ -69,11 +69,13 @@ enum ILBMParser {
         let author: String?
         let copyright: String?
         let annotation: String?
+        let hasSHAM: Bool
 
         var colorMode: String {
             if numPlanes == 32 { return "Direct 32-bit" }
             if numPlanes == 24 { return "Direct 24-bit" }
             if camgFlags & CAMGFlags.ham != 0 {
+                if hasSHAM { return "SHAM" }
                 return numPlanes <= 6 ? "HAM6" : "HAM8"
             }
             if camgFlags & CAMGFlags.ehb != 0 { return "EHB" }
@@ -93,6 +95,7 @@ enum ILBMParser {
         var bmhd: BitmapHeader?
         var cmapCount = 0
         var camg: UInt32 = 0
+        var hasSHAM = false
         var name: String?
         var author: String?
         var copyright: String?
@@ -121,6 +124,8 @@ enum ILBMParser {
                 copyright = readString(data, offset: chunkStart, size: size)
             case "ANNO":
                 annotation = readString(data, offset: chunkStart, size: size)
+            case "SHAM":
+                hasSHAM = true
             default:
                 break
             }
@@ -142,7 +147,8 @@ enum ILBMParser {
             name: name,
             author: author,
             copyright: copyright,
-            annotation: annotation
+            annotation: annotation,
+            hasSHAM: hasSHAM
         )
     }
 
@@ -162,6 +168,7 @@ enum ILBMParser {
         var bmhd: BitmapHeader?
         var cmap: [UInt8]?
         var camg: UInt32 = 0
+        var sham: [UInt8]?
         var bodyOffset = 0
         var bodySize = 0
 
@@ -183,6 +190,8 @@ enum ILBMParser {
                 if size >= 4 {
                     camg = readUInt32(data, offset: chunkStart)
                 }
+            case "SHAM":
+                sham = Array(data[chunkStart..<chunkStart + size])
             case "BODY":
                 bodyOffset = chunkStart
                 bodySize = size
@@ -211,7 +220,8 @@ enum ILBMParser {
             let decompressed = decompressByteRun1(bodySlice)
             pixels = decompressed.withUnsafeBufferPointer { buf in
                 decodeBody(buf: buf, isPBM: isPBM, width: width, height: height,
-                          numPlanes: numPlanes, camg: camg, palette: palette, hasMask: header.masking == 1)
+                          numPlanes: numPlanes, camg: camg, palette: palette, hasMask: header.masking == 1,
+                          shamData: sham)
             }
         } else if header.compression == 0 {
             // Uncompressed: access Data bytes directly, no copy
@@ -219,7 +229,8 @@ enum ILBMParser {
                 let basePtr = rawBuf.baseAddress!.assumingMemoryBound(to: UInt8.self)
                 let buf = UnsafeBufferPointer(start: basePtr + bodyOffset, count: bodySize)
                 return decodeBody(buf: buf, isPBM: isPBM, width: width, height: height,
-                                 numPlanes: numPlanes, camg: camg, palette: palette, hasMask: header.masking == 1)
+                                 numPlanes: numPlanes, camg: camg, palette: palette, hasMask: header.masking == 1,
+                                 shamData: sham)
             }
         } else {
             throw ParseError.unsupportedCompression(header.compression)
@@ -233,7 +244,8 @@ enum ILBMParser {
     private static func decodeBody(
         buf: UnsafeBufferPointer<UInt8>,
         isPBM: Bool, width: Int, height: Int, numPlanes: Int,
-        camg: UInt32, palette: [(r: UInt8, g: UInt8, b: UInt8)], hasMask: Bool
+        camg: UInt32, palette: [(r: UInt8, g: UInt8, b: UInt8)], hasMask: Bool,
+        shamData: [UInt8]? = nil
     ) -> [UInt8] {
         if isPBM {
             return decodePBM(buf, width: width, height: height, palette: palette)
@@ -242,7 +254,14 @@ enum ILBMParser {
         } else if numPlanes == 32 {
             return decode32Bit(buf, width: width, height: height)
         } else if camg & CAMGFlags.ham != 0 {
-            return decodeHAM(buf, width: width, height: height, numPlanes: numPlanes, palette: palette)
+            let shamPalettes: [[(r: UInt8, g: UInt8, b: UInt8)]]?
+            if let shamData = shamData {
+                shamPalettes = parseSHAMPalettes(shamData, height: height)
+            } else {
+                shamPalettes = nil
+            }
+            return decodeHAM(buf, width: width, height: height, numPlanes: numPlanes,
+                            palette: palette, shamPalettes: shamPalettes)
         } else {
             return decodeIndexed(buf, width: width, height: height, numPlanes: numPlanes, palette: palette, hasMask: hasMask)
         }
@@ -449,12 +468,41 @@ enum ILBMParser {
         return indices
     }
 
+    // MARK: - SHAM Palette Parsing
+
+    /// Parses raw SHAM chunk data into per-scanline palettes.
+    /// Format: 2-byte version word, then 16 × UInt16 (big-endian, Amiga 12-bit 0x0RGB) per scanline.
+    private static func parseSHAMPalettes(_ data: [UInt8], height: Int) -> [[(r: UInt8, g: UInt8, b: UInt8)]] {
+        var palettes: [[(r: UInt8, g: UInt8, b: UInt8)]] = []
+        let offset = 2 // skip version word
+
+        for y in 0..<height {
+            var row: [(r: UInt8, g: UInt8, b: UInt8)] = []
+            for c in 0..<16 {
+                let pos = offset + y * 32 + c * 2
+                guard pos + 1 < data.count else {
+                    row.append((0, 0, 0))
+                    continue
+                }
+                let word = UInt16(data[pos]) << 8 | UInt16(data[pos + 1])
+                let r4 = UInt8((word >> 8) & 0xF)
+                let g4 = UInt8((word >> 4) & 0xF)
+                let b4 = UInt8(word & 0xF)
+                row.append((r4 * 17, g4 * 17, b4 * 17))
+            }
+            palettes.append(row)
+        }
+
+        return palettes
+    }
+
     // MARK: - Decode HAM (Hold And Modify)
 
     private static func decodeHAM(
         _ buf: UnsafeBufferPointer<UInt8>,
         width: Int, height: Int, numPlanes: Int,
-        palette: [(r: UInt8, g: UInt8, b: UInt8)]
+        palette: [(r: UInt8, g: UInt8, b: UInt8)],
+        shamPalettes: [[(r: UInt8, g: UInt8, b: UInt8)]]? = nil
     ) -> [UInt8] {
         let bytesPerRow = ((width + 15) / 16) * 2
         let colorPlanes = numPlanes < 7 ? 4 : 6
@@ -479,10 +527,11 @@ enum ILBMParser {
 
                 switch modifier {
                 case 0:
-                    if colorValue < palette.count {
-                        r = palette[colorValue].r
-                        g = palette[colorValue].g
-                        b = palette[colorValue].b
+                    let pal = (shamPalettes != nil && y < shamPalettes!.count) ? shamPalettes![y] : palette
+                    if colorValue < pal.count {
+                        r = pal[colorValue].r
+                        g = pal[colorValue].g
+                        b = pal[colorValue].b
                     }
                 case 1: b = UInt8(colorValue << shift)
                 case 2: r = UInt8(colorValue << shift)
