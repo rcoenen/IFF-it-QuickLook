@@ -1,0 +1,41 @@
+name: IFFQuickLook
+options:
+  bundleIdPrefix: com.iffit
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  SWIFT_VERSION: "5.9"
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+targets:
+  IFFQuickLook:
+    type: application
+    platform: macOS
+    sources:
+      - IFFQuickLook
+    dependencies:
+      - target: IFFPreviewExtension
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.iffit.IFFQuickLook
+      INFOPLIST_FILE: IFFQuickLook/Info.plist
+      PRODUCT_NAME: "IFF-it QuickLook"
+      CODE_SIGN_ENTITLEMENTS: IFFQuickLook/IFFQuickLook.entitlements
+      CODE_SIGN_IDENTITY: "-"
+      CODE_SIGN_STYLE: Automatic
+
+  IFFPreviewExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - IFFPreviewExtension
+      - Shared
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.iffit.IFFQuickLook.IFFPreviewExtension
+      INFOPLIST_FILE: IFFPreviewExtension/Info.plist
+      PRODUCT_NAME: IFFPreviewExtension
+      CODE_SIGN_ENTITLEMENTS: IFFPreviewExtension/IFFPreviewExtension.entitlements
+      CODE_SIGN_IDENTITY: "-"
+      CODE_SIGN_STYLE: Automatic
