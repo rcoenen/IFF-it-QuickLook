@@ -18,6 +18,7 @@
             <displayattrs>
                 kMDItemPixelWidth kMDItemPixelHeight
                 kMDItemColorSpace kMDItemBitsPerSample
+                kMDItemTitle kMDItemAuthors kMDItemCopyright kMDItemComment
             </displayattrs>
         </type>
     </types>
