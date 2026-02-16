@@ -20,6 +20,12 @@ targets:
     dependencies:
       - target: IFFPreviewExtension
       - target: IFFThumbnailExtension
+      - target: IFFSpotlightImporter
+        embed: true
+        codeSign: true
+        copy:
+          destination: plugins
+          subpath: ../Library/Spotlight
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.iffit.IFFQuickLook
       INFOPLIST_FILE: IFFQuickLook/Info.plist
@@ -53,5 +59,21 @@ targets:
       INFOPLIST_FILE: IFFThumbnailExtension/Info.plist
       PRODUCT_NAME: IFFThumbnailExtension
       CODE_SIGN_ENTITLEMENTS: IFFThumbnailExtension/IFFThumbnailExtension.entitlements
+      CODE_SIGN_IDENTITY: "Apple Development"
+      CODE_SIGN_STYLE: Automatic
+
+  IFFSpotlightImporter:
+    type: bundle
+    platform: macOS
+    sources:
+      - IFFSpotlightImporter
+      - Shared
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.iffit.IFFQuickLook.IFFSpotlightImporter
+      INFOPLIST_FILE: IFFSpotlightImporter/Info.plist
+      PRODUCT_NAME: IFFSpotlightImporter
+      WRAPPER_EXTENSION: mdimporter
+      SWIFT_OBJC_BRIDGING_HEADER: IFFSpotlightImporter/BridgingHeader.h
+      CODE_SIGN_ENTITLEMENTS: IFFSpotlightImporter/IFFSpotlightImporter.entitlements
       CODE_SIGN_IDENTITY: "Apple Development"
       CODE_SIGN_STYLE: Automatic

@@ -54,6 +54,98 @@ enum ILBMParser {
         static let ehb: UInt32  = 0x0080
     }
 
+    // MARK: - Metadata
+
+    struct IFFMetadata {
+        let width: UInt16
+        let height: UInt16
+        let numPlanes: UInt8
+        let compression: UInt8
+        let camgFlags: UInt32
+        let paletteColorCount: Int
+        let xAspect: UInt8
+        let yAspect: UInt8
+        let name: String?
+        let author: String?
+        let copyright: String?
+        let annotation: String?
+
+        var colorMode: String {
+            if numPlanes == 32 { return "Direct 32-bit" }
+            if numPlanes == 24 { return "Direct 24-bit" }
+            if camgFlags & CAMGFlags.ham != 0 {
+                return numPlanes <= 6 ? "HAM6" : "HAM8"
+            }
+            if camgFlags & CAMGFlags.ehb != 0 { return "EHB" }
+            return "Indexed"
+        }
+    }
+
+    static func parseMetadata(data: Data) throws -> IFFMetadata {
+        guard data.count >= 12 else { throw ParseError.invalidData }
+
+        let formTag = readTag(data, offset: 0)
+        guard formTag == "FORM" else { throw ParseError.notILBMForm }
+
+        let typeTag = readTag(data, offset: 8)
+        guard typeTag == "ILBM" || typeTag == "PBM " else { throw ParseError.notILBMForm }
+
+        var bmhd: BitmapHeader?
+        var cmapCount = 0
+        var camg: UInt32 = 0
+        var name: String?
+        var author: String?
+        var copyright: String?
+        var annotation: String?
+
+        var offset = 12
+        while offset + 8 <= data.count {
+            let tag = readTag(data, offset: offset)
+            let size = Int(readUInt32(data, offset: offset + 4))
+            let chunkStart = offset + 8
+
+            guard chunkStart + size <= data.count else { break }
+
+            switch tag {
+            case "BMHD":
+                bmhd = parseBMHD(data, offset: chunkStart)
+            case "CMAP":
+                cmapCount = size / 3
+            case "CAMG":
+                if size >= 4 { camg = readUInt32(data, offset: chunkStart) }
+            case "NAME":
+                name = readString(data, offset: chunkStart, size: size)
+            case "AUTH":
+                author = readString(data, offset: chunkStart, size: size)
+            case "(c) ":
+                copyright = readString(data, offset: chunkStart, size: size)
+            case "ANNO":
+                annotation = readString(data, offset: chunkStart, size: size)
+            default:
+                break
+            }
+
+            offset = chunkStart + size + (size & 1)
+        }
+
+        guard let header = bmhd else { throw ParseError.missingBMHD }
+
+        return IFFMetadata(
+            width: header.width,
+            height: header.height,
+            numPlanes: header.numPlanes,
+            compression: header.compression,
+            camgFlags: camg,
+            paletteColorCount: cmapCount,
+            xAspect: header.xAspect,
+            yAspect: header.yAspect,
+            name: name,
+            author: author,
+            copyright: copyright,
+            annotation: annotation
+        )
+    }
+
     // MARK: - Public API
 
     static func parse(data: Data) throws -> CGImage {
@@ -176,6 +268,14 @@ enum ILBMParser {
 
     private static func readInt16(_ data: Data, offset: Int) -> Int16 {
         return Int16(bitPattern: readUInt16(data, offset: offset))
+    }
+
+    private static func readString(_ data: Data, offset: Int, size: Int) -> String? {
+        guard size > 0 else { return nil }
+        let bytes = data[offset..<offset + size]
+        // Trim trailing nulls
+        let trimmed = bytes.prefix(while: { $0 != 0 })
+        return String(bytes: trimmed, encoding: .isoLatin1)
     }
 
     private static func parseBMHD(_ data: Data, offset: Int) -> BitmapHeader {
