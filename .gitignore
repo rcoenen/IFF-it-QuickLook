@@ -15,6 +15,7 @@ xcuserdata/
 ## AI tooling config
 .claude/
 .opencode/
+openspec/
 AGENTS.md
 
 ## Local test scripts (hardcoded paths)
