@@ -1,7 +1,7 @@
 # IFF-it QuickLook
 
 Native macOS support for Amiga IFF/ILBM image files. Preview, thumbnails, and Spotlight search — just like any other image format.
-<img width="1820" height="728" alt="CleanShot 2026-02-16 at 16 33 37@2x" src="https://github.com/user-attachments/assets/4987d2b7-9d5d-42bf-8ccb-61ab9a330c2d" />
+<img width="2138" height="890" alt="CleanShot 2026-02-16 at 16 35 21@2x" src="https://github.com/user-attachments/assets/1bbeb29b-3cc1-483a-b5eb-418ebb49fa9c" />
 
 ## Features
 
