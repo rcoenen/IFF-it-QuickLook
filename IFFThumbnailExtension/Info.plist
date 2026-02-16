@@ -14,6 +14,15 @@
 	<string>XPC!</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>EXAppExtensionAttributes</key>
+	<dict>
+		<key>EXExtensionPointIdentifier</key>
+		<string>com.apple.quicklook.thumbnail</string>
+		<key>QLSupportedContentTypes</key>
+		<array>
+			<string>com.amiga.iff-ilbm</string>
+		</array>
+	</dict>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>
@@ -22,13 +31,13 @@
 			<array>
 				<string>com.amiga.iff-ilbm</string>
 			</array>
-			<key>QLSupportsSearchableItems</key>
-			<false/>
+			<key>QLThumbnailMinimumDimension</key>
+			<integer>0</integer>
 		</dict>
 		<key>NSExtensionPointIdentifier</key>
-		<string>com.apple.quicklook.preview</string>
+		<string>com.apple.quicklook.thumbnail</string>
 		<key>NSExtensionPrincipalClass</key>
-		<string>$(PRODUCT_MODULE_NAME).PreviewViewController</string>
+		<string>$(PRODUCT_MODULE_NAME).ThumbnailProvider</string>
 	</dict>
 </dict>
 </plist>

@@ -9,6 +9,7 @@ options:
 settings:
   SWIFT_VERSION: "5.9"
   MACOSX_DEPLOYMENT_TARGET: "14.0"
+  DEVELOPMENT_TEAM: "T9377257FH"
 
 targets:
   IFFQuickLook:
@@ -18,12 +19,13 @@ targets:
       - IFFQuickLook
     dependencies:
       - target: IFFPreviewExtension
+      - target: IFFThumbnailExtension
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.iffit.IFFQuickLook
       INFOPLIST_FILE: IFFQuickLook/Info.plist
       PRODUCT_NAME: "IFF-it QuickLook"
       CODE_SIGN_ENTITLEMENTS: IFFQuickLook/IFFQuickLook.entitlements
-      CODE_SIGN_IDENTITY: "-"
+      CODE_SIGN_IDENTITY: "Apple Development"
       CODE_SIGN_STYLE: Automatic
 
   IFFPreviewExtension:
@@ -37,5 +39,19 @@ targets:
       INFOPLIST_FILE: IFFPreviewExtension/Info.plist
       PRODUCT_NAME: IFFPreviewExtension
       CODE_SIGN_ENTITLEMENTS: IFFPreviewExtension/IFFPreviewExtension.entitlements
-      CODE_SIGN_IDENTITY: "-"
+      CODE_SIGN_IDENTITY: "Apple Development"
+      CODE_SIGN_STYLE: Automatic
+
+  IFFThumbnailExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - IFFThumbnailExtension
+      - Shared
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.iffit.IFFQuickLook.IFFThumbnailExtension
+      INFOPLIST_FILE: IFFThumbnailExtension/Info.plist
+      PRODUCT_NAME: IFFThumbnailExtension
+      CODE_SIGN_ENTITLEMENTS: IFFThumbnailExtension/IFFThumbnailExtension.entitlements
+      CODE_SIGN_IDENTITY: "Apple Development"
       CODE_SIGN_STYLE: Automatic
