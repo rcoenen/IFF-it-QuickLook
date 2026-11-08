@@ -326,17 +326,17 @@ enum ILBMParser {
             }
         }
 
-        let expected = 1 << min(Int(numPlanes), 8)
-        while palette.count < expected {
-            palette.append((0, 0, 0))
-        }
-
         if camg & CAMGFlags.ehb != 0 && numPlanes == 6 {
             let base = Array(palette.prefix(32))
             while palette.count < 64 {
                 let i = palette.count - 32
                 palette.append(i < base.count ? (base[i].r >> 1, base[i].g >> 1, base[i].b >> 1) : (0, 0, 0))
             }
+        }
+
+        let expected = 1 << min(Int(numPlanes), 8)
+        while palette.count < expected {
+            palette.append((0, 0, 0))
         }
 
         return palette
