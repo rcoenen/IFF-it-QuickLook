@@ -676,14 +676,57 @@ enum ILBMParser {
     // MARK: - CGImage Creation
 
     private static func createCGImage(pixels: [UInt8], width: Int, height: Int) throws -> CGImage {
-        let bytesPerRow = width * 4
+        let shouldHDouble = (Double(width)/Double(height) < 1.0)
+        let shouldVDouble = (Double(width)/Double(height) > 2.0)
+        let bytesPerRow = (shouldHDouble ? width * 8 : width * 4)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+        var stretchedPixels = [UInt8](repeating: 0, count: (shouldVDouble ? height * 2 : height) * bytesPerRow)
 
-        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
+        for y in 0..<height {
+            let sourceRowOffset = y * width * 4
+            let destRow = (shouldVDouble ? y * 2 : y) // Each source row needs to skip a duplicate row (in stretchedPixels) if doubling height
+            let destRowOffset = destRow * bytesPerRow
+
+            for x in 0..<width {
+                let srcIdx = sourceRowOffset + (x * 4)
+                let destIdx = destRowOffset + (x * (shouldHDouble ? 2 : 1) * 4) // Each source pixel takes 2 slots (8 bytes) in the new row if doubling width
+                
+                // Extract the RGBA channels
+                let r = pixels[srcIdx]
+                let g = pixels[srcIdx + 1]
+                let b = pixels[srcIdx + 2]
+                let a = pixels[srcIdx + 3]
+                
+                // Write pixel copy #1
+                stretchedPixels[destIdx]     = r
+                stretchedPixels[destIdx + 1] = g
+                stretchedPixels[destIdx + 2] = b
+                stretchedPixels[destIdx + 3] = a
+                
+                if shouldHDouble {
+                    // Write pixel copy #2 (Horizontal duplication)
+                    stretchedPixels[destIdx + 4] = r
+                    stretchedPixels[destIdx + 5] = g
+                    stretchedPixels[destIdx + 6] = b
+                    stretchedPixels[destIdx + 7] = a
+                }
+                else if shouldVDouble {
+                    let destRowOffset2 = (destRow + 1) * bytesPerRow // Each source row is duplicated (to dest row + 1) if doubling height
+                    let destIdx2 = destRowOffset2 + (x * 4) // No horizontal pixel doubling if virtical doubling
+                    // Write pixel copy #2 (Vertical duplication)
+                    stretchedPixels[destIdx2] = r
+                    stretchedPixels[destIdx2 + 1] = g
+                    stretchedPixels[destIdx2 + 2] = b
+                    stretchedPixels[destIdx2 + 3] = a
+                }
+            }
+        }
+        
+        guard let provider = CGDataProvider(data: Data(stretchedPixels) as CFData),
               let cgImage = CGImage(
-                width: width,
-                height: height,
+                width: (shouldHDouble ? width * 2 : width),
+                height: (shouldVDouble ? height * 2 : height),
                 bitsPerComponent: 8,
                 bitsPerPixel: 32,
                 bytesPerRow: bytesPerRow,
